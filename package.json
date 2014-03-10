@@ -1,0 +1,15 @@
+{
+    "name": "lifedjtu_im",
+    "version": "0.1.0",
+    "author": "li he",
+    "description": "instance message server for lifedjtu",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express":"*",
+        "socket.io":"*",
+        "underscore":"*"
+    }
+}
+
