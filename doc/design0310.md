@@ -67,6 +67,7 @@ say: messageDes(array),messageSource,imGroupFlag,imGroupId,messageContent,messag
     1. 遍历socketMap，为在线的用户触发 本地say，不在线的用户信息直接存进数据库。 触发本地say
     2. 转发的消息格式应该有所变化，messageDes应当不再是数据，而是单一的studentId。
 
+
 offline:
     1. 触发disconnect事件
 
