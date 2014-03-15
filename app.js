@@ -18,6 +18,9 @@ var utils = require("./db/utils"),
 //    console.log(result);
 //});
 
-db.grabUnreadMessages('1018110323',function(err,result){
-    console.log(result);
-});
+//db.grabUnreadMessages('1018110323',function(err,result){
+//    console.log(result);
+//});
+
+
+console.log(utils.uuid());

@@ -149,3 +149,58 @@ exports.updateUnreadMessages = function(studentId, callback){
         });
     });
 };
+
+/**
+ * 更新用户在线状态，下线或上线
+ * @param studentId
+ * @param status 只能是0或1
+ * @param callback （optional）
+ */
+exports.updateIMStatusForUser = function(studentId, status, callback){
+    pool.getConnection(function (err, conn) {
+        //static code
+        if (err){
+            callback(err);
+            return;
+        }
+        //end of static code
+        conn.query(utils.fillNamedSql(config.updateIMStatusForUser,{
+            studentId:studentId,
+            status:status
+        }),function(err,res){
+            //static code
+            conn.release();
+            if (err){
+                callback(err);
+                return;
+            }
+            //end of static code
+
+            callback(null,res.rowsAffected);
+
+        });
+    });
+};
+
+exports.addInstantMessageForUser = function(message,callback){
+    pool.getConnection(function (err, conn) {
+        //static code
+        if (err){
+            callback(err);
+            return;
+        }
+        //end of static code
+        conn.query(utils.fillNamedSql(config.addInstantMessageForUser,message),function(err,res){
+            //static code
+            conn.release();
+            if (err){
+                callback(err);
+                return;
+            }
+            //end of static code
+
+            callback(null,res.rowsAffected);
+
+        });
+    });
+};
