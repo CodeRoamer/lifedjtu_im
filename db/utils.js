@@ -20,21 +20,27 @@ exports.createDynamicPass = function(privateKey){
  * @param params
  */
 exports.fillNamedSql = function(sql,params){
-    var re = /:([a-zA-Z0-9_-]+)/gm
+    var re = /:([a-zA-Z0-9_\-]+)/gm
         ,m;
 
-    while((m=re.exec(sql))){
-        //console.log(m);
-        sql = sql.replace(m[0],"'"+params[m[1]]+"'");
-        //console.log(sql);
+    m = sql.match(re);
 
+    for(var index in m){
+        sql = sql.replace(m[index],"'"+params[m[index].substring(1)]+"'");
     }
+    //console.log(JSON.stringify(params));
+    //console.log(sql);
     return sql;
 }
 
 
 var CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
-
+/**
+ * 生成uuid
+ * @param len
+ * @param radix
+ * @returns {string}
+ */
 exports.uuid = function (len, radix) {
     var chars = CHARS, uuid = [], i;
     radix = radix || chars.length;
@@ -62,3 +68,10 @@ exports.uuid = function (len, radix) {
 
     return uuid.join('');
 };
+
+exports.formatDate = function(time){
+    var date = new Date();
+    date.setTime(parseInt(time));
+
+    return date.getFullYear()+'-'+(date.getMonth()+1)+'-'+date.getDate()+' '+date.getHours()+':'+date.getMinutes()+':'+date.getSeconds();
+}

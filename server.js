@@ -10,7 +10,17 @@ server.listen(1222);
 var socketMap = {};
 var userAuth = {};
 
+//setInterval(function(){
+//    console.log(JSON.stringify(userAuth));
+//},20000);
+
+//error code: 0代表用户错误，1代表认证问题，需要重登录，2代表服务器错误
+
+io.set('log level', 0);
+
 io.sockets.on('connection', function (socket) {
+    socket.emit('ready');
+
     //first event: online event
     socket.on('online', function(data){
 //        data structure should be...
@@ -18,9 +28,21 @@ io.sockets.on('connection', function (socket) {
 //            "studentId":1018110323,
 //            "dynamicPass":'xxxxxxxxxxxxx'
 //        };
+
+        if(!data||!data.studentId){
+            socket.emit('error',{errorCode:0,message:"no studentId provided"});
+            socket.disconnect();
+            return;
+        }
+
+        //bind studentId to socket, let socket know who it is
+        socket.set('studentId', data.studentId, function(){
+            console.log('studentId:'+data.studentId+" is set");
+        });
         db.checkUser(data.studentId,data.dynamicPass,function(err, result){
             if(err||!result.success){
-                //disconnect the user!!!
+                socket.emit('error',{errorCode:1,message:"user access refused, re-signin please!"});
+                socket.disconnect();
                 return;
             }
 
@@ -29,7 +51,8 @@ io.sockets.on('connection', function (socket) {
                 if(!socketMap[data.studentId]){
                     db.grabRelatedGroupUsers(data.studentId,function(err, idArray){
                         if(err){
-                            //disconnect the user!!!
+                            socket.emit('error',{errorCode:2,message:"database error, don't know what goes wrong! cannot notify your online messages"});
+                            //socket.disconnect();
                             return;
                         }
 
@@ -47,7 +70,8 @@ io.sockets.on('connection', function (socket) {
                 //抓取未读信息，say 给用户
                 db.grabUnreadMessages(data.studentId,function(err,messages){
                     if(err){
-                        //disconnect the user!!!
+                        socket.emit('error',{errorCode:2,message:"cannot grab your unread messages!"});
+                        //socket.disconnect();
                         return;
                     }
 
@@ -57,7 +81,8 @@ io.sockets.on('connection', function (socket) {
 
                     db.updateUnreadMessages(data.studentId,function(err){
                         if(err){
-                            //disconnect the user!!!
+                            socket.emit('error',{errorCode:2,message:"cannot update your unread messages' status!"});
+                            //socket.disconnect();
                             return;
                         }
                     });
@@ -65,7 +90,8 @@ io.sockets.on('connection', function (socket) {
                 //更新用户在线状态
                 db.updateIMStatusForUser(data.studentId,1/*online*/,function(err){
                     if(err){
-                        //disconnect the user!!!
+                        socket.emit('error',{errorCode:2,message:"cannot update your online status!"});
+                        //socket.disconnect();
                         return;
                     }
                 });
@@ -76,88 +102,122 @@ io.sockets.on('connection', function (socket) {
 
     socket.on('say',function(data){
         //save auth for future features 验证用户是否通过了验证！
-        if(data.messageSource&&socketMap[data.messageSource]&&data.messageDes){
-            var message = {
-                messageDes: '',
-                messageSource:data.messageSource,
-                imGroupFlag:data.imGroupFlag,
-                imGroupId:data.imGroupId,
-                messageContent:data.messageContent,
-                messageDate:data.messageDate
-            };
+        if(data.messageSource&&socketMap[data.messageSource]){
+
             //messageDes(array),messageSource,imGroupFlag,imGroupId,messageContent,messageDate
-            if(Array.isArray(data.messageDes)){
-                for(var index in data.messageDes){
-                    sayToUser(data.messageDes[index],message);
-                }
+            //群组用户不指望用户来传，自己抓取！！
+            if(data.imGroupFlag=='1'){
+                db.grabUsersInGroup(data.messageDes,data.imGroupId,function(err,studentIdArray){
+                    if(err){
+                        socket.emit('error',{errorCode:2,message:"cannot grab users in group! what's up?"});
+                        return;
+                    }
+                    //console.log("in SAY: "+studentIdArray);
+                    for(var index in studentIdArray){
+                        if(studentIdArray[index]==data.messageSource)
+                            continue;
+                        sayToUser(studentIdArray[index],data);
+                    }
+
+                });
             }else{
-                sayToUser(data.messageDes,message);
+                sayToUser(data.messageDes,data);
             }
+
+
         }
 
     });
 
-    socket.on('offline',function(data){
-        socket.disconnect(data);
+    socket.on('offline',function(){
+        socket.disconnect();
     });
 
-    socket.on('disconnect',function(data){
+    socket.on('disconnect',function(){
         function makeOffline(){
-            //提醒其他用户此用户已经在线
-            if(socketMap[data.studentId]){
-                db.grabRelatedGroupUsers(data.studentId,function(err, idArray){
+            socket.get('studentId', function (err, studentId) {
+                if(err||!studentId){
+                    console.log("ON Disconnect: "+err);
+                    console.log("ON Disconnect - studentId: "+studentId);
+                    return;
+                }
+                //提醒其他用户此用户已经在线
+                if(socketMap[studentId]){
+                    db.grabRelatedGroupUsers(studentId,function(err, idArray){
+                        if(err){
+                            console.log("ON Disconnect - studentId: cannot grab related users for studentId:"+ studentId);
+                            return;
+                        }
+
+                        for(var index in idArray){
+                            if(socketMap[idArray[index]]){
+                                socketMap[idArray[index]].emit('system',{type:'offline',data:{studentId:studentId}});
+                            }
+                        }
+                    });
+
+                }
+                //添加用户数据，方便以后使用
+                socketMap[studentId] = undefined;
+                userAuth[studentId] = undefined;
+                //更新用户在线状态，下线
+                db.updateIMStatusForUser(studentId,0/*offline*/,function(err){
                     if(err){
-                        //disconnect the user!!!
+                        console.log("ON Disconnect - studentId: cannot update user's offline status for studentId:"+ studentId);
                         return;
                     }
-
-                    for(var index in idArray){
-                        if(socketMap[idArray[index]]){
-                            socketMap[idArray[index]].emit('system',{type:'offline',data:{studentId:data.studentId}});
-                        }
-                    }
                 });
+                console.log('user off line!!! '+studentId);
+            });
 
-            }
-            //添加用户数据，方便以后使用
-            socketMap[data.studentId] = undefined;
-            userAuth[data.studentId] = undefined;
-            //更新用户在线状态，下线
-            db.updateIMStatusForUser(data.studentId,0/*offline*/,function(err){
+        }
+
+
+        var timeoutId = setTimeout(makeOffline,0);
+
+    });
+
+    /**
+     * util method
+     * say somthing to user
+     **/
+    var sayToUser = function(studentId,data){
+        //console.log(studentId+": about to say to him/her");
+
+        var message = {
+            messageDes: '',
+            messageSource:data.messageSource,
+            imGroupFlag:data.imGroupFlag,
+            imGroupId:data.imGroupId,
+            messageContent:data.messageContent,
+            messageDate:data.messageDate //long
+        };
+
+        message.messageDes = studentId;
+        message.id = '';
+
+        if(socketMap[studentId]){
+            //messageDes,messageSource,imGroupFlag,imGroupId,messageContent,messageDate
+            //say to user directly
+            socketMap[studentId].emit('say',message);
+        }else{
+            message.id = utils.uuid();
+            message.readFlag = 0;
+            message.messageDate = utils.formatDate(message.messageDate);
+            //save to the database
+
+            db.addInstantMessageForUser(message,function(err){
                 if(err){
-                    //disconnect the user!!!
+                    //console.log(err);
+                    socket.emit('error',{errorCode:2,message:"cannot push you message to the destination user's message box"});
                     return;
                 }
             });
         }
-        setTimeout(makeOffline,5000);
-    });
+    }
+
 
 });
-/**
- * util method
- *
-**/
- var sayToUser = function(studentId, message){
-    message.messageDes = studentId;
-    message.id = '';
-
-    if(socketMap[studentId]){
-        //messageDes,messageSource,imGroupFlag,imGroupId,messageContent,messageDate
-        //say to user directly
-        socketMap[studentId].emit('say',message);
-    }else{
-        message.id = utils.uuid();
-        message.readFlag = 0;
-        //save to the database
-        db.addInstantMessageForUser(message,function(err){
-            if(err){
-                //....do something
-                return;
-            }
-        });
-    }
-}
 
 
 //以下都是为了能够让网页可以被访问

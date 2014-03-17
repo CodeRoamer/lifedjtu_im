@@ -182,6 +182,11 @@ exports.updateIMStatusForUser = function(studentId, status, callback){
     });
 };
 
+/**
+ * 添加离线消息
+ * @param message
+ * @param callback
+ */
 exports.addInstantMessageForUser = function(message,callback){
     pool.getConnection(function (err, conn) {
         //static code
@@ -204,3 +209,38 @@ exports.addInstantMessageForUser = function(message,callback){
         });
     });
 };
+
+exports.grabUsersInGroup = function(studentId,imGroupId,callback){
+    pool.getConnection(function (err, conn) {
+        //static code
+        if (err){
+            callback(err);
+            return;
+        }
+        //end of static code
+        conn.query(utils.fillNamedSql(config.grabUsersInGroup,{
+            studentId:studentId,
+            imGroupId:imGroupId
+        }),function(err,rows){
+            //static code
+            conn.release();
+            if (err){
+                callback(err);
+                return;
+            }
+            //end of static code
+
+            var studentIds = [];
+
+            if(rows.length>0){
+                for(var index in rows){
+                    studentIds.push(rows[index].studentId);
+                }
+                callback(null,studentIds);
+                return;
+            }
+
+            callback(null,studentIds);
+        });
+    });
+}
