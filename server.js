@@ -16,9 +16,31 @@ var userAuth = {};
 
 //error code: 0代表用户错误，1代表认证问题，需要重登录，2代表服务器错误
 
-io.set('log level', 0);
+io.enable('browser client minification');  // send minified client
+io.enable('browser client etag');          // apply etag caching logic based on version number
+io.enable('browser client gzip');          // gzip the file
+io.set('log level', 1);                    // reduce logging
+
+// enable all transports (optional if you want flashsocket support, please note that some hosting
+// providers do not allow you to create servers that listen on a port different than 80 or their
+// default port)
+io.set('transports', [
+    'websocket'
+    , 'flashsocket'
+    , 'htmlfile'
+    , 'xhr-polling'
+    , 'jsonp-polling'
+]);
+
+
+var num = 0;
+setInterval(function(){
+    console.log("socket number:"+num);
+},600000);
 
 io.sockets.on('connection', function (socket) {
+    num++;
+
     socket.emit('ready');
 
     //first event: online event
@@ -41,7 +63,7 @@ io.sockets.on('connection', function (socket) {
         });
         db.checkUser(data.studentId,data.dynamicPass,function(err, result){
             if(err||!result.success){
-                socket.emit('error',{errorCode:1,message:"user access refused, re-signin please!"});
+                socket.emit('error',{errorCode:1,message:"user access refused, re-signin please!",detail:err});
                 socket.disconnect();
                 return;
             }
@@ -51,7 +73,7 @@ io.sockets.on('connection', function (socket) {
                 if(!socketMap[data.studentId]){
                     db.grabRelatedGroupUsers(data.studentId,function(err, idArray){
                         if(err){
-                            socket.emit('error',{errorCode:2,message:"database error, don't know what goes wrong! cannot notify your online messages"});
+                            socket.emit('error',{errorCode:2,message:"database error, don't know what goes wrong! cannot notify your online messages",detail:err});
                             //socket.disconnect();
                             return;
                         }
@@ -70,7 +92,7 @@ io.sockets.on('connection', function (socket) {
                 //抓取未读信息，say 给用户
                 db.grabUnreadMessages(data.studentId,function(err,messages){
                     if(err){
-                        socket.emit('error',{errorCode:2,message:"cannot grab your unread messages!"});
+                        socket.emit('error',{errorCode:2,message:"cannot grab your unread messages!",detail:err});
                         //socket.disconnect();
                         return;
                     }
@@ -81,7 +103,7 @@ io.sockets.on('connection', function (socket) {
 
                     db.updateUnreadMessages(data.studentId,function(err){
                         if(err){
-                            socket.emit('error',{errorCode:2,message:"cannot update your unread messages' status!"});
+                            socket.emit('error',{errorCode:2,message:"cannot update your unread messages' status!",detail:err});
                             //socket.disconnect();
                             return;
                         }
@@ -90,7 +112,7 @@ io.sockets.on('connection', function (socket) {
                 //更新用户在线状态
                 db.updateIMStatusForUser(data.studentId,1/*online*/,function(err){
                     if(err){
-                        socket.emit('error',{errorCode:2,message:"cannot update your online status!"});
+                        socket.emit('error',{errorCode:2,message:"cannot update your online status!",detail:err});
                         //socket.disconnect();
                         return;
                     }
@@ -109,7 +131,7 @@ io.sockets.on('connection', function (socket) {
             if(data.imGroupFlag=='1'){
                 db.grabUsersInGroup(data.messageDes,data.imGroupId,function(err,studentIdArray){
                     if(err){
-                        socket.emit('error',{errorCode:2,message:"cannot grab users in group! what's up?"});
+                        socket.emit('error',{errorCode:2,message:"cannot grab users in group! what's up?",detail:err});
                         return;
                     }
                     //console.log("in SAY: "+studentIdArray);
@@ -134,6 +156,7 @@ io.sockets.on('connection', function (socket) {
     });
 
     socket.on('disconnect',function(){
+        num--;
         function makeOffline(){
             socket.get('studentId', function (err, studentId) {
                 if(err||!studentId){
@@ -145,7 +168,7 @@ io.sockets.on('connection', function (socket) {
                 if(socketMap[studentId]){
                     db.grabRelatedGroupUsers(studentId,function(err, idArray){
                         if(err){
-                            console.log("ON Disconnect - studentId: cannot grab related users for studentId:"+ studentId);
+                            console.log("ON Disconnect - studentId: cannot grab related users for studentId:"+ studentId+"\nerror detail: "+err);
                             return;
                         }
 
@@ -163,7 +186,7 @@ io.sockets.on('connection', function (socket) {
                 //更新用户在线状态，下线
                 db.updateIMStatusForUser(studentId,0/*offline*/,function(err){
                     if(err){
-                        console.log("ON Disconnect - studentId: cannot update user's offline status for studentId:"+ studentId);
+                        console.log("ON Disconnect - studentId: cannot update user's offline status for studentId:"+ studentId+"\nerror detail: "+err);
                         return;
                     }
                 });
@@ -208,8 +231,8 @@ io.sockets.on('connection', function (socket) {
 
             db.addInstantMessageForUser(message,function(err){
                 if(err){
-                    //console.log(err);
-                    socket.emit('error',{errorCode:2,message:"cannot push you message to the destination user's message box"});
+                    console.log(err);
+                    socket.emit('error',{errorCode:2,message:"cannot push you message to the destination user's message box",detail:err});
                     return;
                 }
             });
