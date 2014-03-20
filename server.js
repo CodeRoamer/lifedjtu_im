@@ -6,6 +6,49 @@ var app = require('express')()
 
 server.listen(1222);
 
+/************************* tesseract part **************************/
+
+var dv = require('dv');
+var fs = require('fs');
+
+app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
+    var studentId = req.params.studentId;
+    var password = req.query.randomCode;
+
+    var times = 10;
+
+    function next(err, sessionId, initial){
+        if(times--<0){
+            res.end("Time Try Out!");
+            return;
+        }
+
+        if(!err&&!initial){
+            res.end(sessionId);
+            return;
+        }
+
+        utils.fetchCodeAndSessionId(function(err, sessionId){
+            if(err){
+                //this err should end the request
+                res.end(err);
+            }
+
+            var image = new dv.Image('jpg', fs.readFileSync('./temp/'+sessionId+'.jpeg'));
+            var tesseract = new dv.Tesseract('eng', image);
+            var damnCode = tesseract.findText('plain');
+
+            utils.signinRemote(studentId,password,damnCode,sessionId,next);
+        });
+    }
+
+    next(null,null,true);
+
+});
+
+
+
+/************************** websocket part ******************************/
 //全局变量
 var socketMap = {};
 var userAuth = {};
@@ -244,7 +287,6 @@ io.sockets.on('connection', function (socket) {
 
 
 //以下都是为了能够让网页可以被访问
-var fs = require('fs');
 
 require('http').createServer(handler).listen(18080);
 

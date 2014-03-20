@@ -1,4 +1,6 @@
 
+var http = require('http'),
+    fs = require('fs');
 
 /**
  * 创建动态密钥
@@ -74,4 +76,110 @@ exports.formatDate = function(time){
     date.setTime(parseInt(time));
 
     return date.getFullYear()+'-'+(date.getMonth()+1)+'-'+date.getDate()+' '+date.getHours()+':'+date.getMinutes()+':'+date.getSeconds();
+};
+
+
+
+/**
+ *
+ * @param callback function(err,sessionId)
+ */
+exports.fetchCodeAndSessionId = function(callback){
+    var options = {
+        hostname: '202.199.128.21',
+        port: 80,
+        path: '/academic/getCaptcha.do',
+        method: 'GET'
+    };
+    var req = http.request(options, function(res) {
+        if(res.statusCode==200){
+            var m = res.headers["set-cookie"][0].match(/JSESSIONID=([^;]+)/);
+            var sessionId = m[1];
+
+            //res.setEncoding('utf8');
+            var writable = fs.createWriteStream("./temp/"+sessionId+".jpeg",
+                { flags: 'w',
+                    encoding: null,
+                    mode: 0666 });
+            res.on('data', function (buffer) {
+                writable.write(buffer);
+            });
+            res.on('end', function(){
+                writable.end();
+                callback(null, sessionId);
+            });
+        }else{
+            callback({
+                statusCode:res.statusCode,
+                message : "status code not 200, bad request"
+            });
+        }
+
+    });
+    req.on('error', function(e) {
+        console.log('problem with request: ' + e);
+    });
+
+    // write data to request body
+    req.end();
+};
+
+/**
+ *
+ * @param studentId
+ * @param password
+ * @param damnCode
+ * @param sessionId
+ * @param callback
+ */
+exports.signinRemote = function(studentId, password, damnCode, sessionId, callback){
+    var options = {
+        hostname: '202.199.128.21',
+        port: 80,
+        path: '/academic/j_acegi_security_check',
+        method: 'POST',
+        headers:{
+            "Cookie": "JSESSIONID="+sessionId
+        }
+    };
+
+    var req = http.request(options, function(res) {
+        console.log(res.statusCode);
+        console.log(JSON.stringify(res.headers.location));
+        if(/.*login\.jsp.*/.test(res.headers.location)){
+            callback({
+                statusCode:"302",
+                message: "login failed"
+            },sessionId);
+        }else{
+            callback(null,sessionId);
+        }
+    });
+    req.on('error', function(e) {
+        console.log('problem with request: ' + e);
+    });
+
+    req.write("j_username="+studentId+"&j_password="+password+"&j_captcha="+damnCode);
+    req.end();
+};
+
+/**
+ *
+ * @param sessionId
+ * @param callback
+ */
+var checkSignin = function(sessionId, callback){
+    http.get("http://202.199.128.21/academic/showHeader.do", function(res) {
+        console.log(res.statusCode);
+        if(res.statusCode==200){
+            callback(null,sessionId);
+        }else{
+            callback({
+                statusCode:res.statusCode,
+                message : "status code not 200, bad request"
+            },null);
+        }
+    }).on('error', function(e) {
+            console.log("Got error: " + e.message);
+    });
 }

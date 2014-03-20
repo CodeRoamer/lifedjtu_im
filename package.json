@@ -6,11 +6,16 @@
     "scripts": {
         "start": "node server.js"
     },
+    "repository":{
+        "type":"git",
+        "url":"http://git.oschina.net/jetinbrain/lifedjtu_im.git"
+    },
     "dependencies": {
         "express":"*",
         "socket.io":"*",
         "underscore":"*",
-        "mysql":"*"
+        "mysql":"*",
+        "dv":"*"
     }
 }
 
