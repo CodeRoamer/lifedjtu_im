@@ -28,19 +28,19 @@ var utils = require("./db/utils"),
 //
 //console.log(sql);
 
-//utils.fetchCodeAndSessionId(function(err, sessionId){
-//    if(err){
-//        console.log(err);
-//    }
-//
-//    console.log(sessionId);
-//});
-
-
-utils.signinRemote("1018110323","lh911119","91846","8964E81A67EE6ADEC63764AF437CD345",function(err,sessionId){
+utils.fetchCodeAndSessionId(function(err, sessionId){
     if(err){
         console.log(err);
     }
 
     console.log(sessionId);
 });
+
+
+//utils.signinRemote("1018110323","lh911119","91846","8964E81A67EE6ADEC63764AF437CD345",function(err,sessionId){
+//    if(err){
+//        console.log(err);
+//    }
+//
+//    console.log(sessionId);
+//});

@@ -34,10 +34,42 @@ app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
                 res.end(err);
             }
 
-            var image = new dv.Image('jpg', fs.readFileSync('./temp/'+sessionId+'.jpeg'));
-            var tesseract = new dv.Tesseract('eng', image);
-            var damnCode = tesseract.findText('plain');
+            var image = new dv.Image('jpg', fs.readFileSync('./temp/'+sessionId+'.jpg'));
+            var open = image.thin('bg', 8, 5).dilate(3, 3);
+            var openMap = open.distanceFunction(8);
+            var openMask = openMap.threshold(10).erode(22, 22);
+            var boxes = openMask.invert().connectedComponents(8);
+            for (var i in boxes) {
+                var boxImage = image.crop(
+                    boxes[i].x, boxes[i].y,
+                    boxes[i].width, boxes[i].height);
+                // Do something useful with our image.
+            }
 
+            var tesseract = new dv.Tesseract('eng', image);
+            var tempCode = tesseract.findText('plain');
+
+            var damnCode = '';
+            for(var index in tempCode){
+                if(tempCode[index]==' '||/[^a-zA-Z0-9]/.test(tempCode[index])){
+                    continue;
+                }else if(tempCode[index]=='I'){
+                    damnCode+='1';
+                }else if(tempCode[index]=='D'){
+                    damnCode+='0';
+                }else if(tempCode[index]=='S'){
+                    damnCode+='5';
+                }else{
+                    damnCode+=tempCode[index];
+                }
+            }
+
+            console.log(damnCode);
+            fs.unlink('./temp/'+sessionId+'.jpg', function(err){
+               if(err){
+                   console.log(err);
+               }
+            });
             utils.signinRemote(studentId,password,damnCode,sessionId,next);
         });
     }

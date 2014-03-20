@@ -97,7 +97,7 @@ exports.fetchCodeAndSessionId = function(callback){
             var sessionId = m[1];
 
             //res.setEncoding('utf8');
-            var writable = fs.createWriteStream("./temp/"+sessionId+".jpeg",
+            var writable = fs.createWriteStream("./temp/"+sessionId+".jpg",
                 { flags: 'w',
                     encoding: null,
                     mode: 0666 });
@@ -106,8 +106,12 @@ exports.fetchCodeAndSessionId = function(callback){
             });
             res.on('end', function(){
                 writable.end();
-                callback(null, sessionId);
+                setTimeout(function(){
+                    //console.log("write end...");
+                    callback(null, sessionId);
+                },50);
             });
+
         }else{
             callback({
                 statusCode:res.statusCode,
@@ -133,18 +137,24 @@ exports.fetchCodeAndSessionId = function(callback){
  * @param callback
  */
 exports.signinRemote = function(studentId, password, damnCode, sessionId, callback){
+    var postData = "j_username="+studentId+"&j_password="+password+"&j_captcha="+damnCode;
+
     var options = {
         hostname: '202.199.128.21',
         port: 80,
-        path: '/academic/j_acegi_security_check',
+        path: "/academic/j_acegi_security_check",//?j_username="+studentId+"&j_password="+password+"&j_captcha="+damnCode,
         method: 'POST',
         headers:{
-            "Cookie": "JSESSIONID="+sessionId
+            "Cookie": "JSESSIONID="+sessionId,
+            "Content-Length": Buffer.byteLength(postData, 'utf8'),
+            "Content-Type": 'application/x-www-form-urlencoded',
+
         }
     };
 
     var req = http.request(options, function(res) {
-        console.log(res.statusCode);
+        res.setEncoding("utf8");
+
         console.log(JSON.stringify(res.headers.location));
         if(/.*login\.jsp.*/.test(res.headers.location)){
             callback({
@@ -156,10 +166,10 @@ exports.signinRemote = function(studentId, password, damnCode, sessionId, callba
         }
     });
     req.on('error', function(e) {
-        console.log('problem with request: ' + e);
+        console.log('Signin Remote problem with request: ' + e);
     });
 
-    req.write("j_username="+studentId+"&j_password="+password+"&j_captcha="+damnCode);
+    req.write(postData);
     req.end();
 };
 
