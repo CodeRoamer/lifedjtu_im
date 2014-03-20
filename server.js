@@ -31,7 +31,9 @@ app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
         utils.fetchCodeAndSessionId(function(err, sessionId){
             if(err){
                 //this err should end the request
-                res.end(err);
+                console.log(err);
+                res.end("error occurs");
+                return;
             }
 
             var image = new dv.Image('jpg', fs.readFileSync('./temp/'+sessionId+'.jpg'));
@@ -64,7 +66,7 @@ app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
                 }
             }
 
-            console.log(damnCode);
+            //console.log(damnCode);
             fs.unlink('./temp/'+sessionId+'.jpg', function(err){
                if(err){
                    console.log(err);

@@ -109,7 +109,7 @@ exports.fetchCodeAndSessionId = function(callback){
                 setTimeout(function(){
                     //console.log("write end...");
                     callback(null, sessionId);
-                },50);
+                },200);
             });
 
         }else{
@@ -155,7 +155,7 @@ exports.signinRemote = function(studentId, password, damnCode, sessionId, callba
     var req = http.request(options, function(res) {
         res.setEncoding("utf8");
 
-        console.log(JSON.stringify(res.headers.location));
+        //console.log(JSON.stringify(res.headers.location));
         if(/.*login\.jsp.*/.test(res.headers.location)){
             callback({
                 statusCode:"302",
