@@ -6,42 +6,39 @@ var dv = require('dv')               //node-dv
     , fs = require('fs')           //file system module
     , utils = require('../db/utils');
 
+/**
+ * This function dedicate to be a handler of express for cracking code
+ * @param req request
+ * @param res response
+ */
 var crack = function(req, res) {
     var studentId = req.params.studentId;
     var password = req.query.randomCode; //password actually
 
-    var times = 15; //20 times tries
+    var times = 15; //15 times tries
 
     function next(err, sessionId, initial){
+        console.log(times+" times trying to fetch code with userId: "+studentId);
         if(times--<0){
-            res.end("Time Try Out!"); //failed
-            return;
+            res.end("Times Try Out!"); //failed
+            return; //add return to stop the invocation
         }
 
+        //error here occurs during the request, should not stop the temptation.
         if(!err&&!initial){
             res.end(sessionId); //successful session Id
-            return;
+            return; //add return to stop the invocation
         }
 
-        utils.fetchCodeAndSessionId(function(err, sessionId){
+        utils.fetchCodeAndSessionId(function(err, sessionId, buffer){
             if(err){
-                //this err should end the request
-                console.log(err);
+                console.log(err);  //this err should end the request
                 res.end("error occurs");
-                return;
+                return; //add return to stop the invocation
             }
 
-            var image = new dv.Image('jpg', fs.readFileSync('./temp/'+sessionId+'.jpg'));
-            var open = image.thin('bg', 8, 5).dilate(3, 3);
-            var openMap = open.distanceFunction(8);
-            var openMask = openMap.threshold(10).erode(22, 22);
-            var boxes = openMask.invert().connectedComponents(8);
-            for (var i in boxes) {
-                var boxImage = image.crop(
-                    boxes[i].x, boxes[i].y,
-                    boxes[i].width, boxes[i].height);
-                // Do something useful with our image.
-            }
+            var image = new dv.Image('jpg', buffer);
+            image = image.toGray(0.2,0.75,0.05);
 
             var tesseract = new dv.Tesseract('eng', image);
             var tempCode = tesseract.findText('plain');
@@ -62,12 +59,6 @@ var crack = function(req, res) {
                 }
             }
 
-            //console.log(damnCode);
-            fs.unlink('./temp/'+sessionId+'.jpg', function(err){
-                if(err){
-                    console.log("error delete our temp image file:\n"+err);
-                }
-            });
             utils.signinRemote(studentId,password,damnCode,sessionId,next);
         });
     }

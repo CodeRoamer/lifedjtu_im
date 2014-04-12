@@ -96,25 +96,16 @@ exports.fetchCodeAndSessionId = function(callback){
             var m = res.headers["set-cookie"][0].match(/JSESSIONID=([^;]+)/);
             var sessionId = m[1];
 
-            //res.setEncoding('utf8');
-            var writable = fs.createWriteStream("./temp/"+sessionId+".jpg",
-                { flags: 'w',
-                    encoding: null,
-                    mode: 0666 });
+            var imageBuffer = new Buffer(0);
+
             res.on('data', function (buffer) {
-                writable.write(buffer);
-            });
-            res.on('end', function(){
-                writable.end();
-//                setTimeout(function(){
-//                    //console.log("write end...");
-//                    callback(null, sessionId);
-//                },200);
+                imageBuffer = Buffer.concat([imageBuffer,buffer]);
             });
 
-            writable.on('finish', function(){
-                 callback(null, sessionId);
+            res.on('end', function(){
+                callback(null, sessionId, imageBuffer);
             });
+
 
         }else{
             callback({
@@ -126,6 +117,10 @@ exports.fetchCodeAndSessionId = function(callback){
     });
     req.on('error', function(e) {
         console.log('problem with request: ' + e);
+        callback({
+            statusCode:res.statusCode,
+            message : "request error"
+        });
     });
 
     // write data to request body
@@ -133,7 +128,7 @@ exports.fetchCodeAndSessionId = function(callback){
 };
 
 /**
- *
+ * sign in remote, use the given cracked code
  * @param studentId
  * @param password
  * @param damnCode
@@ -170,29 +165,13 @@ exports.signinRemote = function(studentId, password, damnCode, sessionId, callba
     });
     req.on('error', function(e) {
         console.log('Signin Remote problem with request: ' + e);
+        callback({
+            statusCode:"500",
+            message: "request error"
+        },sessionId);
     });
 
     req.write(postData);
     req.end();
 };
 
-/**
- *
- * @param sessionId
- * @param callback
- */
-var checkSignin = function(sessionId, callback){
-    http.get("http://202.199.128.21/academic/showHeader.do", function(res) {
-        console.log(res.statusCode);
-        if(res.statusCode==200){
-            callback(null,sessionId);
-        }else{
-            callback({
-                statusCode:res.statusCode,
-                message : "status code not 200, bad request"
-            },null);
-        }
-    }).on('error', function(e) {
-            console.log("Got error: " + e.message);
-    });
-}

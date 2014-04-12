@@ -6,6 +6,16 @@ var utils = require("./../db/utils"),
     db = require("./../db/index"),
     config = require("./../db/config");
 
+var dv = require("dv")
+    , fs = require("fs");
+
+var image = new dv.Image('jpg', fs.readFileSync("getCaptcha.jpg"));
+
+//my change occurs here
+image = image.toGray(0.2,0.75,0.05);
+
+fs.writeFileSync("tweakedImage.jpg",image.toBuffer('jpg'));
+
 //console.log(utils.fillNamedSql("select id,studentId,privateKey from user where studentId=:studentId and dynamicPass=:pass",{
 //    studentId:'1018110323',
 //    pass:'123456jfdka'
@@ -28,13 +38,13 @@ var utils = require("./../db/utils"),
 //
 //console.log(sql);
 
-utils.fetchCodeAndSessionId(function(err, sessionId){
-    if(err){
-        console.log(err);
-    }
-
-    console.log(sessionId);
-});
+//utils.fetchCodeAndSessionId(function(err, sessionId){
+//    if(err){
+//        console.log(err);
+//    }
+//
+//    console.log(sessionId);
+//});
 
 
 //utils.signinRemote("1018110323","lh911119","91846","8964E81A67EE6ADEC63764AF437CD345",function(err,sessionId){
