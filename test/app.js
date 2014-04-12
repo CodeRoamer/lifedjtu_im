@@ -2,9 +2,9 @@
     This is only for test
  */
 
-var utils = require("./../db/utils"),
-    db = require("./../db/index"),
-    config = require("./../db/config");
+var utils = require("././utils"),
+    db = require("././index"),
+    config = require("././config");
 
 var dv = require("dv")
     , fs = require("fs");
