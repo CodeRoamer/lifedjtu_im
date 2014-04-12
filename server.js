@@ -1,11 +1,11 @@
-var express = require('express')
-    , app = express()
-    , server = require('http').createServer(app)
-    , io = require('socket.io').listen(1222)
-    , db = require('./db')
-    , utils = require('./db/utils')
-    , dv = require('dv')
-    , fs = require('fs');
+var express = require('express') //express framework
+    , app = express()               // express instance
+    , server = require('http').createServer(app)  //server instance
+    , io = require('socket.io').listen(1222)    //socket io
+    , db = require('./db')          //db module
+    , utils = require('./db/utils')     //db utils module
+    , dv = require('dv')               //node-dv
+    , fs = require('fs');           //file system module
 
 server.listen(18080);
 
@@ -14,21 +14,21 @@ server.listen(18080);
 
 /************************* tesseract part **************************/
 
-
-app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
+app.get('/fetchCodeAndSessionId/:studentId', function(req, res) {
     var studentId = req.params.studentId;
-    var password = req.query.randomCode;
+    var password = req.query.randomCode; //password actually
 
-    var times = 10;
+    var times = 15; //20 times tries
 
     function next(err, sessionId, initial){
+        console.log(times+" times trying to fetch code with userId: "+studentId);
         if(times--<0){
-            res.end("Time Try Out!");
+            res.end("Time Try Out!"); //failed
             return;
         }
 
         if(!err&&!initial){
-            res.end(sessionId);
+            res.end(sessionId); //successful session Id
             return;
         }
 
@@ -55,6 +55,7 @@ app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
             var tesseract = new dv.Tesseract('eng', image);
             var tempCode = tesseract.findText('plain');
 
+            //fix our code
             var damnCode = '';
             for(var index in tempCode){
                 if(tempCode[index]==' '||/[^a-zA-Z0-9]/.test(tempCode[index])){
@@ -72,9 +73,9 @@ app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
 
             //console.log(damnCode);
             fs.unlink('./temp/'+sessionId+'.jpg', function(err){
-               if(err){
-                   console.log(err);
-               }
+                if(err){
+                    console.log("error delete our temp image file:\n"+err);
+                }
             });
             utils.signinRemote(studentId,password,damnCode,sessionId,next);
         });
@@ -83,8 +84,6 @@ app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
     next(null,null,true);
 
 });
-
-
 
 /************************** websocket part ******************************/
 //全局变量

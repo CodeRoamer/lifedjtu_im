@@ -106,10 +106,14 @@ exports.fetchCodeAndSessionId = function(callback){
             });
             res.on('end', function(){
                 writable.end();
-                setTimeout(function(){
-                    //console.log("write end...");
-                    callback(null, sessionId);
-                },200);
+//                setTimeout(function(){
+//                    //console.log("write end...");
+//                    callback(null, sessionId);
+//                },200);
+            });
+
+            writable.on('finish', function(){
+                 callback(null, sessionId);
             });
 
         }else{
@@ -147,8 +151,7 @@ exports.signinRemote = function(studentId, password, damnCode, sessionId, callba
         headers:{
             "Cookie": "JSESSIONID="+sessionId,
             "Content-Length": Buffer.byteLength(postData, 'utf8'),
-            "Content-Type": 'application/x-www-form-urlencoded',
-
+            "Content-Type": 'application/x-www-form-urlencoded'
         }
     };
 
