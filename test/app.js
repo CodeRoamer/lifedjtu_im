@@ -2,9 +2,9 @@
     This is only for test
  */
 
-var utils = require("./db/utils"),
-    db = require("./db"),
-    config = require("./db/config");
+var utils = require("./../db/utils"),
+    db = require("./../db/index"),
+    config = require("./../db/config");
 
 //console.log(utils.fillNamedSql("select id,studentId,privateKey from user where studentId=:studentId and dynamicPass=:pass",{
 //    studentId:'1018110323',

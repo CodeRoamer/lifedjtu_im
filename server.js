@@ -1,15 +1,19 @@
-var app = require('express')()
+var express = require('express')
+    , app = express()
     , server = require('http').createServer(app)
-    , io = require('socket.io').listen(server)
+    , io = require('socket.io').listen(1222)
     , db = require('./db')
-    , utils = require('./db/utils');
+    , utils = require('./db/utils')
+    , dv = require('dv')
+    , fs = require('fs');
 
-server.listen(1222);
+server.listen(18080);
+
+/************************* web page part ***************************/
+
 
 /************************* tesseract part **************************/
 
-var dv = require('dv');
-var fs = require('fs');
 
 app.get('/fetchCodeAndSessionId/:studentId',function(req, res){
     var studentId = req.params.studentId;
@@ -318,36 +322,3 @@ io.sockets.on('connection', function (socket) {
 
 
 });
-
-
-//以下都是为了能够让网页可以被访问
-
-require('http').createServer(handler).listen(18080);
-
-function handler (req, res) {
-    var regx = /\/res\/.*/;
-    if(regx.test(req.url)){
-        fs.readFile(__dirname + req.url,
-            function (err, data) {
-                if (err) {
-                    res.writeHead(500);
-                    return res.end('Error loading index.html');
-                }
-
-                res.writeHead(200);
-                res.end(data);
-            });
-    }else{
-        fs.readFile(__dirname + '/index.html',
-            function (err, data) {
-                if (err) {
-                    res.writeHead(500);
-                    return res.end('Error loading index.html');
-                }
-
-                res.writeHead(200);
-                res.end(data);
-            });
-    }
-
-}
