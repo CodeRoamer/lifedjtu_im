@@ -11,11 +11,11 @@
         "url":"http://git.oschina.net/jetinbrain/lifedjtu_im.git"
     },
     "dependencies": {
-        "express":"*",
-        "socket.io":"*",
+        "express":"~3.4.8",
+        "socket.io":"~0.9.16",
         "underscore":"*",
-        "mysql":"*",
-        "dv":"*"
+        "mysql":"~2.1.1",
+        "dv":"~1.5.1"
     }
 }
 
